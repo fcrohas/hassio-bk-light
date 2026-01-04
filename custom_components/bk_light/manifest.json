@@ -11,5 +11,5 @@
   "bluetooth": [{
     "local_name": "LED_BLE_*"
   }],
-  "version": "1.0.0"
+  "version": "1.0.2"
 }

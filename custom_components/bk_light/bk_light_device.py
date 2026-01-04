@@ -69,45 +69,86 @@ class BKLightDevice:
             if self.client and self.client.is_connected:
                 return True
 
-            _LOGGER.debug("Scanning for device %s...", self.address)
+            _LOGGER.info("Attempting to connect to device at %s...", self.address)
             
-            # Try to find device with different methods
-            device = None
+            # First, do a general scan to see what's available
+            _LOGGER.debug("Starting BLE scan (15 seconds)...")
             try:
-                # Try without cached first (preferred)
-                device = await BleakScanner.find_device_by_address(
-                    self.address, timeout=15.0, cached=False
-                )
-            except TypeError:
-                # Fallback for older bleak versions without cached parameter
-                device = await BleakScanner.find_device_by_address(
-                    self.address, timeout=15.0
-                )
+                devices = await BleakScanner.discover(timeout=15.0)
+                _LOGGER.debug("Found %d BLE devices total", len(devices))
+                
+                # Log devices that might be BK Light displays
+                for d in devices:
+                    if d.name and any(prefix in d.name for prefix in ["LED_BLE", "BK_LIGHT", "BJ_LED"]):
+                        _LOGGER.info(
+                            "Found potential BK Light: %s at %s (RSSI: %s dBm)",
+                            d.name,
+                            d.address,
+                            getattr(d, 'rssi', 'N/A')
+                        )
+                
+                # Try to find our specific device
+                device = next((d for d in devices if d.address.upper() == self.address.upper()), None)
+                
+                if device:
+                    _LOGGER.info(
+                        "Target device found: %s at %s (RSSI: %s dBm)",
+                        getattr(device, 'name', 'Unknown'),
+                        device.address,
+                        getattr(device, 'rssi', 'N/A')
+                    )
+                else:
+                    _LOGGER.warning(
+                        "Device %s not found in scan. Found %d devices total. "
+                        "Attempting direct connection...",
+                        self.address,
+                        len(devices)
+                    )
+                    # Try find_device_by_address as fallback
+                    try:
+                        device = await BleakScanner.find_device_by_address(
+                            self.address, timeout=10.0, cached=False
+                        )
+                    except TypeError:
+                        device = await BleakScanner.find_device_by_address(
+                            self.address, timeout=10.0
+                        )
             
-            if device is None:
-                # Try with cached=True as fallback
-                _LOGGER.debug("Device not found, trying with cache...")
+            except Exception as scan_err:
+                _LOGGER.warning("Error during discovery scan: %s. Trying direct connection...", scan_err)
+                # Fallback to direct address lookup
                 try:
                     device = await BleakScanner.find_device_by_address(
-                        self.address, timeout=15.0, cached=True
+                        self.address, timeout=15.0, cached=False
                     )
                 except TypeError:
-                    pass
+                    device = await BleakScanner.find_device_by_address(
+                        self.address, timeout=15.0
+                    )
             
             if device is None:
                 _LOGGER.error(
-                    "Device %s not found. Make sure it's powered on and in range. "
-                    "The device should advertise as LED_BLE_*",
+                    "Device %s not found after extensive scanning. "
+                    "Please check:\n"
+                    "  1. The device is powered on (display should be lit)\n"
+                    "  2. The device is within 10 meters of the Bluetooth adapter\n"
+                    "  3. The device is not connected to another device (phone/app)\n"
+                    "  4. The MAC address is correct (use bk_light.scan_devices service)\n"
+                    "  5. Bluetooth is enabled: sudo hciconfig hci0 up",
                     self.address
                 )
                 return False
 
-            _LOGGER.debug("Device found: %s", device.name if hasattr(device, 'name') else 'Unknown')
+            _LOGGER.info(
+                "Attempting connection to %s (%s)...",
+                device.address,
+                getattr(device, 'name', 'Unknown')
+            )
             
-            self.client = BleakClient(device)
+            self.client = BleakClient(device, timeout=20.0)
             await self.client.connect()
             
-            _LOGGER.debug("Connected, starting notifications...")
+            _LOGGER.debug("Connected, starting notifications on UUID %s...", UUID_NOTIFY)
             await self.client.start_notify(UUID_NOTIFY, self._notification_handler)
             
             self._is_connected = True
@@ -115,7 +156,12 @@ class BKLightDevice:
             return True
             
         except BleakError as err:
-            _LOGGER.error("BLE error connecting to %s: %s", self.address, err)
+            _LOGGER.error(
+                "BLE error connecting to %s: %s. "
+                "This may indicate the device is already connected elsewhere or out of range.",
+                self.address,
+                err
+            )
             self._is_connected = False
             if self.client:
                 try:

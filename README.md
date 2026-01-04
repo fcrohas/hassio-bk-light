@@ -75,6 +75,20 @@ The BK Light ACT1026 is a 32x32 RGB LED matrix display that connects via Bluetoo
 
 ## Troubleshooting
 
+### Quick Diagnostic Tool
+
+Run the included diagnostic script to test your BLE connection:
+
+```bash
+# Scan for all BK Light devices
+python3 diagnostic.py
+
+# Test connection to a specific device
+python3 diagnostic.py CC:42:DE:9A:B7:3B
+```
+
+This will show you all available BLE devices, signal strength, and verify the connection.
+
 ### Device Not Found
 
 - Ensure Bluetooth is enabled on your Home Assistant host
@@ -87,8 +101,9 @@ The BK Light ACT1026 is a 32x32 RGB LED matrix display that connects via Bluetoo
 
 - Try power cycling the BK Light display
 - Check Bluetooth adapter status: `hciconfig` or `bluetoothctl`
-- Ensure no other devices are connected to the display
+- Ensure no other devices are connected to the display (disconnect from phone app)
 - Verify BLE 4.0+ support on your Bluetooth adapter
+- Check permissions: `sudo usermod -a -G bluetooth homeassistant`
 
 ### Debug Logging
 
