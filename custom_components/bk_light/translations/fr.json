@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer BK Light ACT1026",
+        "description": "Entrez l'adresse MAC Bluetooth de votre écran BK Light (format: XX:XX:XX:XX:XX:XX).",
+        "data": {
+          "address": "Adresse MAC Bluetooth",
+          "name": "Nom de l'appareil",
+          "rotation": "Rotation (degrés)",
+          "brightness": "Luminosité (0.1 - 1.0)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Échec de la connexion à l'appareil. Veuillez vous assurer que l'écran est allumé, à portée Bluetooth et non connecté à un autre appareil.",
+      "invalid_address": "Format d'adresse MAC Bluetooth invalide. Utilisez le format XX:XX:XX:XX:XX:XX.",
+      "unknown": "Une erreur inattendue s'est produite. Veuillez réessayer."
+    },
+    "abort": {
+      "already_configured": "Cet appareil est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options BK Light",
+        "data": {
+          "name": "Nom de l'appareil",
+          "rotation": "Rotation (degrés)",
+          "brightness": "Luminosité (0.1 - 1.0)"
+        }
+      }
+    }
+  }
+}

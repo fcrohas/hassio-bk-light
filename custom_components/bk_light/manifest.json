@@ -1,0 +1,15 @@
+{
+  "domain": "bk_light",
+  "name": "BK Light ACT1026",
+  "codeowners": ["@fcrohas"],
+  "config_flow": true,
+  "documentation": "https://github.com/fcrohas/hassio-bk-light",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/fcrohas/hassio-bk-light/issues",
+  "requirements": ["bleak>=0.21.0", "Pillow>=10.0.0"],
+  "bluetooth": [{
+    "local_name": "LED_BLE_*"
+  }],
+  "version": "1.0.0"
+}
