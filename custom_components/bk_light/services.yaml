@@ -1,0 +1,3 @@
+scan_devices:
+  name: Scan for BK Light Devices
+  description: Scan for BLE devices with LED_BLE prefix to help diagnose connection issues.

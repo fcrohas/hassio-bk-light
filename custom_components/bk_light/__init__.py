@@ -10,10 +10,17 @@ from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import CONF_ADDRESS, CONF_BRIGHTNESS, CONF_ROTATION, DEFAULT_BRIGHTNESS, DEFAULT_ROTATION, DOMAIN
 from .bk_light_device import BKLightDevice
+from .services import async_setup_services
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.IMAGE]
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Set up the BK Light component."""
+    await async_setup_services(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

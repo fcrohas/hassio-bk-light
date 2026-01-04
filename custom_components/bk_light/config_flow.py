@@ -1,6 +1,7 @@
 """Config flow for BK Light ACT1026 integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -63,17 +64,33 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     rotation = data.get(CONF_ROTATION, DEFAULT_ROTATION)
     brightness = data.get(CONF_BRIGHTNESS, DEFAULT_BRIGHTNESS)
 
+    _LOGGER.info("Attempting to connect to BK Light at %s...", address)
     device = BKLightDevice(address, rotation, brightness)
 
-    # Test connection
+    # Test connection with timeout
     try:
-        connected = await device.connect()
+        connected = await asyncio.wait_for(device.connect(), timeout=30.0)
         if not connected:
-            raise ConnectionError("Failed to connect to device")
+            raise ConnectionError(
+                "Failed to connect to device. Ensure the display is powered on, "
+                "within Bluetooth range, and not paired with another device."
+            )
+        _LOGGER.info("Successfully connected to %s, disconnecting...", address)
         await device.disconnect()
+    except asyncio.TimeoutError:
+        _LOGGER.error("Connection timeout for %s", address)
+        raise ConnectionError(
+            "Connection timeout. The device may be out of range or turned off."
+        )
+    except ValueError as err:
+        _LOGGER.error("Validation error for %s: %s", address, err)
+        raise
     except Exception as err:
         _LOGGER.error("Failed to connect to BK Light at %s - %s", address, err)
-        raise ConnectionError(f"Cannot connect to device: {err}") from err
+        raise ConnectionError(
+            f"Cannot connect to device: {err}. "
+            "Make sure Bluetooth is enabled and the device is in range."
+        ) from err
 
     return {"title": data.get(CONF_NAME, DEFAULT_NAME)}
 

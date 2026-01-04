@@ -69,22 +69,70 @@ class BKLightDevice:
             if self.client and self.client.is_connected:
                 return True
 
-            device = await BleakScanner.find_device_by_address(
-                self.address, timeout=10.0
-            )
+            _LOGGER.debug("Scanning for device %s...", self.address)
+            
+            # Try to find device with different methods
+            device = None
+            try:
+                # Try without cached first (preferred)
+                device = await BleakScanner.find_device_by_address(
+                    self.address, timeout=15.0, cached=False
+                )
+            except TypeError:
+                # Fallback for older bleak versions without cached parameter
+                device = await BleakScanner.find_device_by_address(
+                    self.address, timeout=15.0
+                )
+            
             if device is None:
-                _LOGGER.error("Device %s not found", self.address)
+                # Try with cached=True as fallback
+                _LOGGER.debug("Device not found, trying with cache...")
+                try:
+                    device = await BleakScanner.find_device_by_address(
+                        self.address, timeout=15.0, cached=True
+                    )
+                except TypeError:
+                    pass
+            
+            if device is None:
+                _LOGGER.error(
+                    "Device %s not found. Make sure it's powered on and in range. "
+                    "The device should advertise as LED_BLE_*",
+                    self.address
+                )
                 return False
 
+            _LOGGER.debug("Device found: %s", device.name if hasattr(device, 'name') else 'Unknown')
+            
             self.client = BleakClient(device)
             await self.client.connect()
+            
+            _LOGGER.debug("Connected, starting notifications...")
             await self.client.start_notify(UUID_NOTIFY, self._notification_handler)
+            
             self._is_connected = True
-            _LOGGER.info("Connected to BK Light at %s", self.address)
+            _LOGGER.info("Successfully connected to BK Light at %s", self.address)
             return True
-        except Exception as err:
-            _LOGGER.error("Failed to connect to %s: %s", self.address, err)
+            
+        except BleakError as err:
+            _LOGGER.error("BLE error connecting to %s: %s", self.address, err)
             self._is_connected = False
+            if self.client:
+                try:
+                    await self.client.disconnect()
+                except Exception:
+                    pass
+                self.client = None
+            return False
+        except Exception as err:
+            _LOGGER.error("Unexpected error connecting to %s: %s", self.address, err)
+            self._is_connected = False
+            if self.client:
+                try:
+                    await self.client.disconnect()
+                except Exception:
+                    pass
+                self.client = None
             return False
 
     async def disconnect(self):
